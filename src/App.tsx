@@ -241,7 +241,7 @@ function Hero() {
             animate={{ y: 0 }}
             transition={{ duration: 1, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
           >
-            <span className="text-gradient italic pr-4">DIGITAL</span> EXPERIENCES
+            <span className="text-gradient italic pr-4">DIGITAL</span> IMPRINTING
           </motion.h1>
         </div>
         
@@ -251,7 +251,7 @@ function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 0.8, ease: "easeOut" }}
         >
-          I build immersive, interactive, and stunning web applications that leave a lasting impression.
+          What is presented here is an imagination of movement for me. All the colors are flowing through my life.
         </motion.p>
       </motion.div>
 
@@ -421,8 +421,8 @@ function Footer() {
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center md:items-end gap-16 mb-32">
         <div className="flex flex-col items-center md:items-start w-full md:w-auto">
           <h2 className="font-display text-6xl md:text-[9vw] leading-[0.85] font-bold tracking-tighter mb-8 text-center md:text-left">
-            LET'S <br/>
-            <span className="text-white/40 italic font-light">TALK</span>
+            JOIN <br/>
+            <span className="text-white/40 italic font-light">US</span>
           </h2>
           <Magnetic strength={40}>
             <a href="mailto:tatealenvip@gmail.com" className="group relative inline-flex items-center justify-center px-8 py-5 rounded-full bg-white text-black font-medium uppercase tracking-widest overflow-hidden cursor-none">
