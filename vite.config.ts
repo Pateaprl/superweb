@@ -3,9 +3,9 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  // 如果你的 GitHub 仓库链接是 https://github.com/username/my-portfolio
-  // 那么这里必须填 '/my-portfolio/'
-  base: '/-superweb/', 
+  // 既然你使用了自定义域名 (https://www.skyhome.studio)，
+  // 网站会部署在根目录，所以 base 必须改回 '/'
+  base: '/', 
   plugins: [
     react(),
     tailwindcss(),
