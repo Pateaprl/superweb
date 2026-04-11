@@ -69,7 +69,7 @@ function CustomCursor() {
   }, []);
 
   return (
-    <div className="custom-cursor-element hidden md:block">
+    <div className="custom-cursor-element hidden [@media(pointer:fine)]:block">
       <motion.div
         className="fixed top-0 left-0 w-4 h-4 bg-white rounded-full pointer-events-none z-50 mix-blend-difference"
         animate={{
