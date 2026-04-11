@@ -425,8 +425,8 @@ function Footer() {
             <span className="text-white/40 italic font-light">TALK</span>
           </h2>
           <Magnetic strength={40}>
-            <a href="mailto:hello@example.com" className="group relative inline-flex items-center justify-center px-8 py-5 rounded-full bg-white text-black font-medium uppercase tracking-widest overflow-hidden cursor-none">
-              <span className="relative z-10 group-hover:text-white transition-colors duration-500">hello@example.com</span>
+            <a href="mailto:tatealenvip@gmail.com" className="group relative inline-flex items-center justify-center px-8 py-5 rounded-full bg-white text-black font-medium uppercase tracking-widest overflow-hidden cursor-none">
+              <span className="relative z-10 group-hover:text-white transition-colors duration-500">hello@skyhome.studio</span>
               <div className="absolute inset-0 bg-black transform scale-y-0 origin-bottom group-hover:scale-y-100 transition-transform duration-500 ease-[0.76,0,0.24,1]" />
             </a>
           </Magnetic>
@@ -444,7 +444,7 @@ function Footer() {
       </div>
       
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center text-white/30 text-xs md:text-sm font-mono uppercase tracking-[0.2em] gap-4">
-        <p>© {new Date().getFullYear()} PORTFOLIO</p>
+        <p>© {new Date().getFullYear()} Tate Alen</p>
         <p>Designed & Built with passion</p>
       </div>
     </footer>
