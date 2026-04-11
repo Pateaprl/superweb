@@ -105,11 +105,30 @@ function AnimatedBackground() {
       canvas.addEventListener = function(type, listener, options) {
         if (type === 'touchstart' || type === 'touchmove') {
           const wrappedListener = (e: Event) => {
-            e.preventDefault = () => {};
+            const touchEvent = e as TouchEvent;
+            const proxyEvent = new Proxy(touchEvent, {
+              get(target, prop) {
+                if (prop === 'preventDefault') return () => {};
+                if (prop === 'targetTouches' || prop === 'changedTouches' || prop === 'touches') {
+                  const touches = target[prop as keyof TouchEvent] as TouchList;
+                  return Array.from(touches).map(t => new Proxy(t, {
+                    get(tTarget, tProp) {
+                      if (tProp === 'pageX') return tTarget.clientX;
+                      if (tProp === 'pageY') return tTarget.clientY;
+                      const val = tTarget[tProp as keyof Touch];
+                      return typeof val === 'function' ? val.bind(tTarget) : val;
+                    }
+                  }));
+                }
+                const val = target[prop as keyof TouchEvent];
+                return typeof val === 'function' ? val.bind(target) : val;
+              }
+            });
+
             if (typeof listener === 'function') {
-              listener(e);
+              listener(proxyEvent as unknown as Event);
             } else if (listener && typeof listener.handleEvent === 'function') {
-              listener.handleEvent(e);
+              listener.handleEvent(proxyEvent as unknown as Event);
             }
           };
           return originalAddEventListener.call(this, type, wrappedListener, { passive: true });
