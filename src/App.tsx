@@ -3,6 +3,7 @@ import { motion, useScroll, useTransform, AnimatePresence } from 'motion/react';
 import { Github, Twitter, Linkedin, Mail, ArrowRight } from 'lucide-react';
 import webGLFluidEnhanced from 'webgl-fluid';
 import Matter from 'matter-js';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 function Preloader({ onComplete }: { onComplete: () => void }) {
   const [progress, setProgress] = useState(0);
@@ -830,6 +831,7 @@ export default function App() {
         <Work />
         <Footer />
       </motion.main>
+      <SpeedInsights />
     </>
   );
 }
