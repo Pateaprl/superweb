@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence } from 'motion/react';
 import { Github, Twitter, Linkedin, Mail, ArrowRight } from 'lucide-react';
 import webGLFluidEnhanced from 'webgl-fluid';
+import { Analytics } from '@vercel/analytics/react';
 
 function Preloader({ onComplete }: { onComplete: () => void }) {
   const [progress, setProgress] = useState(0);
@@ -484,6 +485,7 @@ export default function App() {
           <Footer />
         </motion.main>
       )}
+      <Analytics />
     </>
   );
 }
