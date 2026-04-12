@@ -16,11 +16,11 @@ function Preloader({ onComplete }: { onComplete: () => void }) {
 
     const timer = setInterval(() => {
       setProgress(p => {
-        const newP = p + Math.floor(Math.random() * 12) + 2;
+        const newP = p + Math.floor(Math.random() * 10) + 5;
         if (newP >= 100) {
           clearInterval(timer);
           setLoadingText("System ready.");
-          setTimeout(onComplete, 800);
+          setTimeout(onComplete, 250);
           return 100;
         }
         if (newP > 25 && newP < 50) setLoadingText(texts[1]);
@@ -29,7 +29,7 @@ function Preloader({ onComplete }: { onComplete: () => void }) {
 
         return newP;
       });
-    }, 100);
+    }, 40);
     return () => clearInterval(timer);
   }, [onComplete]);
 
@@ -322,7 +322,7 @@ function Hero({ loading }: { loading: boolean }) {
             className="font-display text-[14vw] md:text-[9vw] font-bold leading-[0.85] tracking-tighter"
             initial={{ y: "100%" }}
             animate={{ y: loading ? "100%" : 0 }}
-            transition={{ duration: 1, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
           >
             CRAFTING
           </motion.h1>
@@ -332,7 +332,7 @@ function Hero({ loading }: { loading: boolean }) {
             className="font-display text-[14vw] md:text-[9vw] font-bold leading-[0.85] tracking-tighter"
             initial={{ y: "100%" }}
             animate={{ y: loading ? "100%" : 0 }}
-            transition={{ duration: 1, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
           >
             <span className="text-gradient italic pr-4">DIGITAL</span> IMPRINTING
           </motion.h1>
@@ -342,7 +342,7 @@ function Hero({ loading }: { loading: boolean }) {
           className="max-w-xl mx-auto text-base md:text-xl text-white/60 font-light leading-relaxed"
           initial={{ opacity: 0, y: 20, z: 40 }}
           animate={{ opacity: loading ? 0 : 1, y: loading ? 20 : 0, z: 40 }}
-          transition={{ duration: 1, delay: 0.8, ease: "easeOut" }}
+          transition={{ duration: 0.8, delay: 0.4, ease: "easeOut" }}
         >
           What is presented here is an imagination of movement for me. All the colors are flowing through my life.
         </motion.p>
