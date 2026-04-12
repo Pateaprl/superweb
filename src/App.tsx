@@ -60,7 +60,7 @@ function Preloader({ onComplete }: { onComplete: () => void }) {
           </motion.div>
         </div>
         
-        <div className="w-full max-w-md flex flex-col gap-4 px-4">
+        <div className="w-full max-w-3xl flex flex-col gap-4 px-4 md:px-8">
           <div className="h-[2px] w-full bg-white/10 relative overflow-hidden rounded-full">
             <motion.div
               className="absolute top-0 left-0 h-full bg-white shadow-[0_0_15px_rgba(255,255,255,0.8)]"
