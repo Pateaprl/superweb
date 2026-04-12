@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence, useMotionValue, useSpring } from 'motion/react';
-import { Github, Twitter, Linkedin, Mail, ArrowRight } from 'lucide-react';
+import { Github, Twitter, Linkedin, Mail, ArrowRight, ArrowLeft } from 'lucide-react';
 
 function Preloader({ onComplete }: { onComplete: () => void }) {
   const [progress, setProgress] = useState(0);
@@ -85,6 +85,7 @@ function Preloader({ onComplete }: { onComplete: () => void }) {
 
 function CustomCursor() {
   const [isHovering, setIsHovering] = useState(false);
+  const [arrowDir, setArrowDir] = useState<'left' | 'right'>('right');
   const cursorX = useMotionValue(-100);
   const cursorY = useMotionValue(-100);
   const cursorXSpring = useSpring(cursorX, { stiffness: 500, damping: 28, mass: 0.5 });
@@ -92,17 +93,33 @@ function CustomCursor() {
   const ringXSpring = useSpring(cursorX, { stiffness: 250, damping: 20, mass: 0.8 });
   const ringYSpring = useSpring(cursorY, { stiffness: 250, damping: 20, mass: 0.8 });
 
+  const isHoveringRef = useRef(false);
+  const currentDirRef = useRef<'left' | 'right'>('right');
+  const lastX = useRef(-100);
+
   useEffect(() => {
     const updateMousePosition = (e: MouseEvent) => {
       cursorX.set(e.clientX);
       cursorY.set(e.clientY);
+
+      if (e.clientX > lastX.current + 1) {
+        currentDirRef.current = 'right';
+      } else if (e.clientX < lastX.current - 1) {
+        currentDirRef.current = 'left';
+      }
+      lastX.current = e.clientX;
     };
 
     const handleMouseOver = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (target.tagName.toLowerCase() === 'a' || target.tagName.toLowerCase() === 'button' || target.closest('a') || target.closest('button')) {
+      const isOverClickable = !!(target.tagName.toLowerCase() === 'a' || target.tagName.toLowerCase() === 'button' || target.closest('a') || target.closest('button'));
+      
+      if (isOverClickable && !isHoveringRef.current) {
+        setArrowDir(currentDirRef.current);
+        isHoveringRef.current = true;
         setIsHovering(true);
-      } else {
+      } else if (!isOverClickable && isHoveringRef.current) {
+        isHoveringRef.current = false;
         setIsHovering(false);
       }
     };
@@ -116,18 +133,63 @@ function CustomCursor() {
     };
   }, [cursorX, cursorY]);
 
+  const text = "EXPLORE • DISCOVER • CREATE • ";
+  const chars = text.split("");
+
   return (
     <div className="custom-cursor-element hidden [@media(pointer:fine)]:block">
       <motion.div
-        className="fixed top-0 left-0 w-4 h-4 bg-white rounded-full pointer-events-none z-50 mix-blend-difference"
+        className="fixed top-0 left-0 bg-white rounded-full pointer-events-none z-[150] mix-blend-difference flex items-center justify-center overflow-hidden"
         style={{ x: cursorXSpring, y: cursorYSpring, translateX: "-50%", translateY: "-50%" }}
-        animate={{ scale: isHovering ? 2.5 : 1 }}
-      />
+        animate={{
+          width: isHovering ? 64 : 8,
+          height: isHovering ? 64 : 8,
+        }}
+        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      >
+        <AnimatePresence>
+          {isHovering && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0, rotate: arrowDir === 'right' ? -45 : 45 }}
+              animate={{ opacity: 1, scale: 1, rotate: 0 }}
+              exit={{ opacity: 0, scale: 0, rotate: arrowDir === 'right' ? 45 : -45 }}
+              transition={{ duration: 0.2 }}
+              className="flex items-center justify-center"
+            >
+              {arrowDir === 'right' ? <ArrowRight className="w-6 h-6 text-black" /> : <ArrowLeft className="w-6 h-6 text-black" />}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+
       <motion.div
-        className="fixed top-0 left-0 w-12 h-12 border border-white/30 rounded-full pointer-events-none z-40"
+        className="fixed top-0 left-0 w-32 h-32 pointer-events-none z-[149] mix-blend-difference flex items-center justify-center"
         style={{ x: ringXSpring, y: ringYSpring, translateX: "-50%", translateY: "-50%" }}
-        animate={{ scale: isHovering ? 1.5 : 1 }}
-      />
+        animate={{
+          scale: isHovering ? 1.2 : 0.4,
+          opacity: isHovering ? 1 : 0.3
+        }}
+        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      >
+        <motion.div
+          className="relative w-full h-full"
+          animate={{ rotate: 360 }}
+          transition={{ repeat: Infinity, duration: 12, ease: "linear" }}
+        >
+          {chars.map((char, i) => (
+            <span
+              key={i}
+              className="absolute left-1/2 top-0 text-[10px] font-mono font-bold text-white"
+              style={{
+                transform: `translateX(-50%) rotate(${i * 12}deg)`,
+                transformOrigin: "50% 64px"
+              }}
+            >
+              {char}
+            </span>
+          ))}
+        </motion.div>
+      </motion.div>
     </div>
   );
 }
