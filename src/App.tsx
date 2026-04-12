@@ -49,7 +49,7 @@ function Preloader({ onComplete }: { onComplete: () => void }) {
 
       {/* Center Content */}
       <div className="flex flex-col items-center justify-center flex-1 w-full">
-        <div className="overflow-hidden mb-6">
+        <div className="overflow-hidden mb-6 px-4 md:px-8">
           <motion.div
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
