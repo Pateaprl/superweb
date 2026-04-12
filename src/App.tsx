@@ -59,7 +59,7 @@ function Preloader({ onComplete }: { onComplete: () => void }) {
         </div>
         
         <div className="w-full max-w-3xl flex flex-col gap-4 px-4 md:px-8">
-          <div className="h-[2px] w-full bg-white/10 relative overflow-hidden rounded-full">
+          <div className="h-[4px] md:h-[6px] w-full bg-white/10 relative overflow-hidden rounded-full">
             <motion.div
               className="absolute top-0 left-0 h-full bg-white shadow-[0_0_15px_rgba(255,255,255,0.8)]"
               initial={{ width: 0 }}
@@ -215,7 +215,7 @@ function AnimatedBackground() {
                       if (tProp === 'pageX') return tTarget.clientX;
                       if (tProp === 'pageY') return tTarget.clientY;
                       const val = tTarget[tProp as keyof Touch];
-                      return typeof val === 'function' ? val.bind(tTarget) : val;
+                      return typeof val === 'function' ? (val as Function).bind(tTarget) : val;
                     }
                   }));
                 }
@@ -1075,10 +1075,10 @@ function Footer() {
         </ScrollFade>
       </div>
       
-      <ScrollFade className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center text-white/30 text-xs md:text-sm font-mono uppercase tracking-[0.2em] gap-4">
+      <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center text-white/30 text-xs md:text-sm font-mono uppercase tracking-[0.2em] gap-4">
         <p>© {new Date().getFullYear()} Tate Alen</p>
         <p>Designed & Built with passion</p>
-      </ScrollFade>
+      </div>
     </footer>
   );
 }
