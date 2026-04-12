@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence } from 'motion/react';
 import { Github, Twitter, Linkedin, Mail, ArrowRight } from 'lucide-react';
 import webGLFluidEnhanced from 'webgl-fluid';
-import { Analytics } from '@vercel/analytics/react';
+import Matter from 'matter-js';
 
 function Preloader({ onComplete }: { onComplete: () => void }) {
   const [progress, setProgress] = useState(0);
@@ -213,19 +213,55 @@ function Hero() {
   const y2 = useTransform(scrollY, [0, 1000], [0, -100]);
   const opacity = useTransform(scrollY, [0, 500], [1, 0]);
 
+  const [rotateX, setRotateX] = useState(0);
+  const [rotateY, setRotateY] = useState(0);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const { clientX, clientY } = e;
+      const { innerWidth, innerHeight } = window;
+      const x = (clientX / innerWidth - 0.5) * 40; 
+      const y = (clientY / innerHeight - 0.5) * -40;
+      setRotateX(y);
+      setRotateY(x);
+    };
+
+    const handleMouseLeave = () => {
+      setRotateX(0);
+      setRotateY(0);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseleave', handleMouseLeave);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, []);
+
   return (
-    <section className="relative h-screen flex flex-col justify-center items-center px-6 overflow-hidden">
-      <motion.div style={{ y: y1, opacity }} className="text-center z-10 w-full max-w-5xl">
+    <section 
+      className="relative h-screen flex flex-col justify-center items-center px-6 overflow-hidden pointer-events-none"
+      style={{ perspective: 1000 }}
+    >
+      <motion.div 
+        style={{ y: y1, opacity, transformStyle: "preserve-3d" }} 
+        animate={{ rotateX, rotateY }}
+        transition={{ type: "spring", stiffness: 75, damping: 15, mass: 0.5 }}
+        className="text-center z-10 w-full max-w-5xl"
+      >
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+          style={{ transform: "translateZ(60px)" }}
           className="inline-block mb-6 px-5 py-2 rounded-full border border-white/10 glass-panel text-xs md:text-sm font-mono tracking-[0.2em] uppercase text-white/80"
         >
           Creative Developer & Designer
         </motion.div>
         
-        <div className="overflow-hidden py-2">
+        <div className="overflow-hidden py-2" style={{ transform: "translateZ(100px)" }}>
           <motion.h1 
             className="font-display text-[14vw] md:text-[9vw] font-bold leading-[0.85] tracking-tighter"
             initial={{ y: "100%" }}
@@ -235,7 +271,7 @@ function Hero() {
             CRAFTING
           </motion.h1>
         </div>
-        <div className="overflow-hidden py-2 mb-6">
+        <div className="overflow-hidden py-2 mb-6" style={{ transform: "translateZ(80px)" }}>
           <motion.h1 
             className="font-display text-[14vw] md:text-[9vw] font-bold leading-[0.85] tracking-tighter"
             initial={{ y: "100%" }}
@@ -251,6 +287,7 @@ function Hero() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 0.8, ease: "easeOut" }}
+          style={{ transform: "translateZ(40px)" }}
         >
           What is presented here is an imagination of movement for me. All the colors are flowing through my life.
         </motion.p>
@@ -258,7 +295,7 @@ function Hero() {
 
       <motion.div 
         style={{ y: y2, opacity }}
-        className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-4"
+        className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-4 pointer-events-none"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 1, delay: 1.2 }}
@@ -286,7 +323,14 @@ function Word({ word }: { word: string }) {
   
   return (
     <span ref={ref} className="relative inline-block mr-[0.25em] mt-[0.1em]">
-      <motion.span style={{ opacity, y, display: "inline-block" }}>{word}</motion.span>
+      <motion.span 
+        style={{ opacity, y, display: "inline-block" }}
+        whileHover={{ scale: 1.1, y: -10, color: "#fff", textShadow: "0px 0px 20px rgba(255,255,255,0.8)" }}
+        transition={{ type: "spring", stiffness: 300, damping: 10 }}
+        className="cursor-none transition-colors duration-300 pointer-events-auto"
+      >
+        {word}
+      </motion.span>
     </span>
   );
 }
@@ -296,12 +340,191 @@ function About() {
   const words = text.split(" ");
   
   return (
-    <section className="py-32 px-6 md:px-12 max-w-6xl mx-auto min-h-screen flex items-center justify-center">
+    <section className="py-32 px-6 md:px-12 max-w-6xl mx-auto min-h-screen flex items-center justify-center pointer-events-none">
       <h2 className="font-display text-4xl md:text-6xl lg:text-7xl leading-[1.1] font-medium text-center max-w-5xl">
         {words.map((word, i) => (
           <Word key={i} word={word} />
         ))}
       </h2>
+    </section>
+  );
+}
+
+const skillsList = ["React", "WebGL", "Three.js", "Framer Motion", "TailwindCSS", "UI/UX", "TypeScript", "Next.js", "Creative Coding", "GSAP"];
+
+function Skills() {
+  const sceneRef = useRef<HTMLDivElement>(null);
+  const engineRef = useRef<Matter.Engine | null>(null);
+  const bodiesRef = useRef<Matter.Body[]>([]);
+  const [gravity, setGravity] = useState(false);
+
+  useEffect(() => {
+    if (!sceneRef.current) return;
+
+    const Engine = Matter.Engine,
+          Runner = Matter.Runner,
+          MouseConstraint = Matter.MouseConstraint,
+          Mouse = Matter.Mouse,
+          World = Matter.World,
+          Bodies = Matter.Bodies;
+
+    const engine = Engine.create();
+    engineRef.current = engine;
+    const world = engine.world;
+
+    engine.world.gravity.y = 0; // Start with no gravity
+
+    const width = sceneRef.current.clientWidth;
+    const height = sceneRef.current.clientHeight;
+
+    // Walls
+    const wallOptions = { isStatic: true, render: { visible: false } };
+    const wallThickness = 50;
+    World.add(world, [
+        Bodies.rectangle(width / 2, -wallThickness/2, width, wallThickness, wallOptions), // Top
+        Bodies.rectangle(width / 2, height + wallThickness/2, width, wallThickness, wallOptions), // Bottom
+        Bodies.rectangle(-wallThickness/2, height / 2, wallThickness, height, wallOptions), // Left
+        Bodies.rectangle(width + wallThickness/2, height / 2, wallThickness, height, wallOptions) // Right
+    ]);
+
+    const bodies = skillsList.map((skill, i) => {
+        // Approximate size based on text length and padding
+        const isMobile = window.innerWidth < 768;
+        const charWidth = isMobile ? 8 : 10;
+        const padding = isMobile ? 48 : 64;
+        const w = skill.length * charWidth + padding;
+        const h = isMobile ? 48 : 56;
+        
+        const x = Math.random() * (width - w) + w/2;
+        const y = Math.random() * (height - h) + h/2;
+        
+        return Bodies.rectangle(x, y, w, h, {
+            chamfer: { radius: h / 2 },
+            restitution: 0.8, // Bounciness
+            friction: 0.005,
+            frictionAir: 0.01,
+            render: { visible: false }
+        });
+    });
+    
+    bodiesRef.current = bodies;
+    World.add(world, bodies);
+
+    const mouse = Mouse.create(sceneRef.current);
+    const mouseConstraint = MouseConstraint.create(engine, {
+        mouse: mouse,
+        constraint: {
+            stiffness: 0.2,
+            render: { visible: false }
+        }
+    });
+    World.add(world, mouseConstraint);
+
+    const runner = Runner.create();
+    Runner.run(runner, engine);
+
+    let animationFrameId: number;
+    const updateDOM = () => {
+        bodies.forEach((body, i) => {
+            const el = document.getElementById(`skill-${i}`);
+            if (el) {
+                el.style.left = `${body.position.x}px`;
+                el.style.top = `${body.position.y}px`;
+                el.style.transform = `translate(-50%, -50%) rotate(${body.angle}rad)`;
+            }
+        });
+        animationFrameId = requestAnimationFrame(updateDOM);
+    };
+    updateDOM();
+
+    return () => {
+        cancelAnimationFrame(animationFrameId);
+        Runner.stop(runner);
+        Engine.clear(engine);
+        if (engine.world) {
+            World.clear(engine.world, false);
+        }
+    };
+  }, []);
+
+  const handleReset = () => {
+    if (!engineRef.current || !sceneRef.current) return;
+    const width = sceneRef.current.clientWidth;
+    const height = sceneRef.current.clientHeight;
+
+    bodiesRef.current.forEach((body, i) => {
+      const skill = skillsList[i];
+      const isMobile = window.innerWidth < 768;
+      const charWidth = isMobile ? 8 : 10;
+      const padding = isMobile ? 48 : 64;
+      const w = skill.length * charWidth + padding;
+      const h = isMobile ? 48 : 56;
+      
+      const x = Math.random() * (width - w) + w/2;
+      const y = Math.random() * (height - h) + h/2;
+
+      Matter.Body.setPosition(body, { x, y });
+      Matter.Body.setVelocity(body, { x: 0, y: 0 });
+      Matter.Body.setAngularVelocity(body, 0);
+      Matter.Body.setAngle(body, 0);
+    });
+
+    setGravity(false);
+    engineRef.current.world.gravity.y = 0;
+  };
+
+  const toggleGravity = () => {
+    if (!engineRef.current) return;
+    const newGravity = !gravity;
+    setGravity(newGravity);
+    engineRef.current.world.gravity.y = newGravity ? 1 : 0;
+  };
+
+  return (
+    <section className="py-20 px-6 md:px-12 max-w-6xl mx-auto overflow-hidden pointer-events-none">
+      <div className="mb-16 flex flex-col items-center gap-8">
+        <div className="flex flex-col items-center gap-4">
+          <h2 className="font-display text-4xl md:text-5xl font-bold tracking-tighter text-center">
+            INTERACTIVE <span className="text-white/40 italic font-light">PLAYGROUND</span>
+          </h2>
+          <p className="text-white/50 text-sm font-mono uppercase tracking-widest">Drag and throw the pills</p>
+        </div>
+        
+        <div className="flex gap-4 z-20 relative">
+          <button 
+            onClick={handleReset} 
+            className="px-6 py-2 rounded-full border border-white/20 hover:bg-white hover:text-black transition-colors font-mono text-sm uppercase tracking-widest pointer-events-auto cursor-none"
+          >
+            Reset
+          </button>
+          <button 
+            onClick={toggleGravity} 
+            className={`px-6 py-2 rounded-full border transition-colors font-mono text-sm uppercase tracking-widest pointer-events-auto cursor-none ${gravity ? 'bg-white text-black border-white' : 'border-white/20 hover:bg-white hover:text-black'}`}
+          >
+            Gravity: {gravity ? 'ON' : 'OFF'}
+          </button>
+        </div>
+      </div>
+      
+      <div 
+        ref={sceneRef} 
+        className="relative w-full h-[500px] md:h-[600px] border border-white/10 rounded-[3rem] glass-panel overflow-hidden bg-white/[0.02] pointer-events-auto"
+        style={{ touchAction: 'none' }}
+      >
+        {skillsList.map((skill, i) => (
+          <div
+            key={i}
+            id={`skill-${i}`}
+            className="absolute top-0 left-0 px-6 py-3 md:px-8 md:py-4 bg-white/5 border border-white/10 rounded-full backdrop-blur-md font-mono text-sm md:text-base uppercase tracking-wider text-white/80 select-none pointer-events-none shadow-lg whitespace-nowrap"
+            style={{ transform: 'translate(-50%, -50%)' }}
+          >
+            {skill}
+          </div>
+        ))}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03] font-display text-[10vw] font-bold uppercase tracking-tighter text-center leading-none">
+          SKILLS
+        </div>
+      </div>
     </section>
   );
 }
@@ -337,59 +560,134 @@ function ProjectCard({ project, index }: { project: any, index: number }) {
     offset: ["start end", "end start"]
   });
   
-  const y = useTransform(scrollYProgress, [0, 1], [150, -150]);
+  const y = useTransform(scrollYProgress, [0, 1], [250, -250]);
   const opacity = useTransform(scrollYProgress, [0, 0.2, 0.8, 1], [0, 1, 1, 0]);
-  const scale = useTransform(scrollYProgress, [0, 0.5, 1], [0.8, 1, 0.9]);
+  const scale = useTransform(scrollYProgress, [0, 0.5, 1], [0.4, 1, 0.4]);
+  const rotateX = useTransform(scrollYProgress, [0, 0.5, 1], [45, 0, -45]);
+  const rotateY = useTransform(scrollYProgress, [0, 0.5, 1], index % 2 === 0 ? [-30, 0, 30] : [30, 0, -30]);
+  const imageScale = useTransform(scrollYProgress, [0, 0.5, 1], [1.8, 1.1, 1.8]);
+  const filter = useTransform(scrollYProgress, [0, 0.4, 0.6, 1], ["grayscale(100%) blur(15px)", "grayscale(0%) blur(0px)", "grayscale(0%) blur(0px)", "grayscale(100%) blur(15px)"]);
+
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isPressing, setIsPressing] = useState(false);
+  const pressTimer = useRef<number | null>(null);
+
+  const handlePressStart = () => {
+    setIsPressing(true);
+    pressTimer.current = window.setTimeout(() => {
+      setIsPreviewOpen(true);
+      setIsPressing(false);
+    }, 500); // 500ms long press
+  };
+
+  const handlePressEnd = () => {
+    setIsPressing(false);
+    if (pressTimer.current) {
+      clearTimeout(pressTimer.current);
+    }
+  };
+
+  useEffect(() => {
+    if (isPreviewOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isPreviewOpen]);
 
   return (
-    <motion.div 
-      ref={ref}
-      style={{ opacity }}
-      className={`flex flex-col ${index % 2 !== 0 ? 'md:flex-row-reverse' : 'md:flex-row'} gap-12 md:gap-20 items-center`}
-    >
+    <>
       <motion.div 
-        style={{ scale }}
-        className="w-full md:w-3/5 overflow-hidden rounded-[2rem] glass-panel relative group aspect-[4/3] md:aspect-[16/10] pointer-events-auto"
+        ref={ref}
+        style={{ opacity, perspective: 1200 }}
+        className={`flex flex-col ${index % 2 !== 0 ? 'md:flex-row-reverse' : 'md:flex-row'} gap-12 md:gap-20 items-center`}
       >
         <motion.div 
-          className="absolute inset-0 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          style={{ scale, rotateX, rotateY, filter }}
+          className="w-full md:w-3/5 overflow-hidden rounded-[2rem] glass-panel relative group aspect-[4/3] md:aspect-[16/10] pointer-events-auto shadow-[0_0_50px_rgba(0,0,0,0.5)]"
         >
-          <Magnetic strength={60}>
-            <div className="w-28 h-28 rounded-full bg-white text-black flex items-center justify-center font-bold uppercase tracking-widest text-sm transform scale-0 group-hover:scale-100 transition-transform duration-500 delay-100 cursor-none">
-              View
-            </div>
-          </Magnetic>
+          <motion.div 
+            className="absolute inset-0 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 flex items-center justify-center bg-black/40 backdrop-blur-md"
+          >
+            <Magnetic strength={60}>
+              <div className="w-28 h-28 rounded-full bg-white text-black flex items-center justify-center font-bold uppercase tracking-widest text-sm transform scale-0 group-hover:scale-100 transition-transform duration-500 delay-100 cursor-none select-none">
+                <motion.div
+                  onPointerDown={handlePressStart}
+                  onPointerUp={handlePressEnd}
+                  onPointerLeave={handlePressEnd}
+                  onContextMenu={(e) => e.preventDefault()}
+                  animate={{ scale: isPressing ? 0.85 : 1 }}
+                  className="w-full h-full flex items-center justify-center rounded-full"
+                >
+                  {isPressing ? "Hold..." : "View"}
+                </motion.div>
+              </div>
+            </Magnetic>
+          </motion.div>
+          <motion.img 
+            style={{ y, scale: imageScale }}
+            src={project.image} 
+            alt={project.title}
+            className="w-full h-[150%] object-cover absolute top-[-25%] left-0 transition-transform duration-700 group-hover:scale-110"
+          />
         </motion.div>
-        <motion.img 
-          style={{ y }}
-          src={project.image} 
-          alt={project.title}
-          className="w-full h-[130%] object-cover absolute top-[-15%] left-0"
-        />
-      </motion.div>
-      
-      <div className="w-full md:w-2/5 flex flex-col">
-        <div className="flex items-center gap-4 mb-6">
-          <span className="text-sm font-mono tracking-widest uppercase" style={{ color: project.color }}>
-            0{index + 1}
-          </span>
-          <div className="h-[1px] w-12 bg-white/20" />
-          <span className="text-sm font-mono tracking-widest uppercase text-white/60">
-            {project.year}
-          </span>
+        
+        <div className="w-full md:w-2/5 flex flex-col">
+          <div className="flex items-center gap-4 mb-6">
+            <span className="text-sm font-mono tracking-widest uppercase" style={{ color: project.color }}>
+              0{index + 1}
+            </span>
+            <div className="h-[1px] w-12 bg-white/20" />
+            <span className="text-sm font-mono tracking-widest uppercase text-white/60">
+              {project.year}
+            </span>
+          </div>
+          <h3 className="font-display text-5xl md:text-7xl font-bold mb-6 tracking-tight">{project.title}</h3>
+          <p className="text-white/50 text-lg md:text-xl mb-10 leading-relaxed font-light">
+            {project.category}
+          </p>
+          <Magnetic strength={20}>
+            <button className="w-fit flex items-center gap-4 pb-3 border-b border-white/20 hover:border-white transition-colors group cursor-none">
+              <span className="uppercase tracking-[0.2em] text-sm font-medium">Explore Case</span>
+              <ArrowRight className="w-5 h-5 transform group-hover:translate-x-3 transition-transform" />
+            </button>
+          </Magnetic>
         </div>
-        <h3 className="font-display text-5xl md:text-7xl font-bold mb-6 tracking-tight">{project.title}</h3>
-        <p className="text-white/50 text-lg md:text-xl mb-10 leading-relaxed font-light">
-          {project.category}
-        </p>
-        <Magnetic strength={20}>
-          <button className="w-fit flex items-center gap-4 pb-3 border-b border-white/20 hover:border-white transition-colors group cursor-none">
-            <span className="uppercase tracking-[0.2em] text-sm font-medium">Explore Case</span>
-            <ArrowRight className="w-5 h-5 transform group-hover:translate-x-3 transition-transform" />
-          </button>
-        </Magnetic>
-      </div>
-    </motion.div>
+      </motion.div>
+
+      <AnimatePresence>
+        {isPreviewOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-xl cursor-none pointer-events-auto"
+            onClick={() => setIsPreviewOpen(false)}
+          >
+            <motion.img
+              initial={{ scale: 0.8, opacity: 0, y: 50 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.8, opacity: 0, y: 50 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              src={project.image}
+              alt={project.title}
+              className="max-w-[90vw] max-h-[90vh] object-contain rounded-xl shadow-2xl pointer-events-none"
+            />
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              className="absolute top-8 right-8 text-white/50 font-mono text-sm uppercase tracking-widest pointer-events-none"
+            >
+              Click anywhere to close
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
@@ -481,11 +779,11 @@ export default function App() {
         >
           <Hero />
           <About />
+          <Skills />
           <Work />
           <Footer />
         </motion.main>
       )}
-      <Analytics />
     </>
   );
 }
