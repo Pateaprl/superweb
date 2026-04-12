@@ -1,8 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence, useMotionValue, useSpring } from 'motion/react';
 import { Github, Twitter, Linkedin, Mail, ArrowRight } from 'lucide-react';
-import webGLFluidEnhanced from 'webgl-fluid';
-import Matter from 'matter-js';
 
 function Preloader({ onComplete }: { onComplete: () => void }) {
   const [progress, setProgress] = useState(0);
@@ -178,34 +176,37 @@ function AnimatedBackground() {
         return originalAddEventListener.call(this, type, listener, options);
       };
 
-      webGLFluidEnhanced(canvas, {
-        IMMEDIATE: true,
-        TRIGGER: 'hover',
-        SIM_RESOLUTION: 128,
-        DYE_RESOLUTION: 1024,
-        CAPTURE_RESOLUTION: 512,
-        DENSITY_DISSIPATION: 1.5,
-        VELOCITY_DISSIPATION: 0.5,
-        PRESSURE: 0.8,
-        PRESSURE_ITERATIONS: 20,
-        CURL: 30,
-        SPLAT_RADIUS: 0.25,
-        SPLAT_FORCE: 6000,
-        SHADING: true,
-        COLORFUL: true,
-        COLOR_UPDATE_SPEED: 10,
-        PAUSED: false,
-        BACK_COLOR: { r: 3, g: 3, b: 3 },
-        TRANSPARENT: false,
-        BLOOM: true,
-        BLOOM_ITERATIONS: 8,
-        BLOOM_RESOLUTION: 256,
-        BLOOM_INTENSITY: 0.4,
-        BLOOM_THRESHOLD: 0.8,
-        BLOOM_SOFT_KNEE: 0.7,
-        SUNRAYS: true,
-        SUNRAYS_RESOLUTION: 196,
-        SUNRAYS_WEIGHT: 0.5,
+      import('webgl-fluid').then((module) => {
+        const webGLFluidEnhanced = module.default;
+        webGLFluidEnhanced(canvas, {
+          IMMEDIATE: true,
+          TRIGGER: 'hover',
+          SIM_RESOLUTION: 128,
+          DYE_RESOLUTION: 1024,
+          CAPTURE_RESOLUTION: 512,
+          DENSITY_DISSIPATION: 1.5,
+          VELOCITY_DISSIPATION: 0.5,
+          PRESSURE: 0.8,
+          PRESSURE_ITERATIONS: 20,
+          CURL: 30,
+          SPLAT_RADIUS: 0.25,
+          SPLAT_FORCE: 6000,
+          SHADING: true,
+          COLORFUL: true,
+          COLOR_UPDATE_SPEED: 10,
+          PAUSED: false,
+          BACK_COLOR: { r: 3, g: 3, b: 3 },
+          TRANSPARENT: false,
+          BLOOM: true,
+          BLOOM_ITERATIONS: 8,
+          BLOOM_RESOLUTION: 256,
+          BLOOM_INTENSITY: 0.4,
+          BLOOM_THRESHOLD: 0.8,
+          BLOOM_SOFT_KNEE: 0.7,
+          SUNRAYS: true,
+          SUNRAYS_RESOLUTION: 196,
+          SUNRAYS_WEIGHT: 0.5,
+        });
       });
     }
   }, []);
@@ -410,101 +411,112 @@ const skillsList = ["React", "WebGL", "Three.js", "Framer Motion", "TailwindCSS"
 
 function Skills() {
   const sceneRef = useRef<HTMLDivElement>(null);
-  const engineRef = useRef<Matter.Engine | null>(null);
-  const bodiesRef = useRef<Matter.Body[]>([]);
+  const engineRef = useRef<any>(null);
+  const bodiesRef = useRef<any[]>([]);
+  const matterRef = useRef<any>(null);
   const [gravity, setGravity] = useState(false);
 
   useEffect(() => {
     if (!sceneRef.current) return;
 
-    const Engine = Matter.Engine,
-          Runner = Matter.Runner,
-          MouseConstraint = Matter.MouseConstraint,
-          Mouse = Matter.Mouse,
-          World = Matter.World,
-          Bodies = Matter.Bodies;
-
-    const engine = Engine.create();
-    engineRef.current = engine;
-    const world = engine.world;
-
-    engine.world.gravity.y = 0; // Start with no gravity
-
-    const width = sceneRef.current.clientWidth;
-    const height = sceneRef.current.clientHeight;
-
-    // Walls
-    const wallOptions = { isStatic: true, render: { visible: false } };
-    const wallThickness = 50;
-    World.add(world, [
-        Bodies.rectangle(width / 2, -wallThickness/2, width, wallThickness, wallOptions), // Top
-        Bodies.rectangle(width / 2, height + wallThickness/2, width, wallThickness, wallOptions), // Bottom
-        Bodies.rectangle(-wallThickness/2, height / 2, wallThickness, height, wallOptions), // Left
-        Bodies.rectangle(width + wallThickness/2, height / 2, wallThickness, height, wallOptions) // Right
-    ]);
-
-    const bodies = skillsList.map((skill, i) => {
-        // Approximate size based on text length and padding
-        const isMobile = window.innerWidth < 768;
-        const charWidth = isMobile ? 8 : 10;
-        const padding = isMobile ? 48 : 64;
-        const w = skill.length * charWidth + padding;
-        const h = isMobile ? 48 : 56;
-        
-        const x = Math.random() * (width - w) + w/2;
-        const y = Math.random() * (height - h) + h/2;
-        
-        return Bodies.rectangle(x, y, w, h, {
-            chamfer: { radius: h / 2 },
-            restitution: 0.8, // Bounciness
-            friction: 0.005,
-            frictionAir: 0.01,
-            render: { visible: false }
-        });
-    });
-    
-    bodiesRef.current = bodies;
-    World.add(world, bodies);
-
-    const mouse = Mouse.create(sceneRef.current);
-    const mouseConstraint = MouseConstraint.create(engine, {
-        mouse: mouse,
-        constraint: {
-            stiffness: 0.2,
-            render: { visible: false }
-        }
-    });
-    World.add(world, mouseConstraint);
-
-    const runner = Runner.create();
-    Runner.run(runner, engine);
-
     let animationFrameId: number;
-    const updateDOM = () => {
-        bodies.forEach((body, i) => {
-            const el = document.getElementById(`skill-${i}`);
-            if (el) {
-                el.style.left = `${body.position.x}px`;
-                el.style.top = `${body.position.y}px`;
-                el.style.transform = `translate(-50%, -50%) rotate(${body.angle}rad)`;
-            }
-        });
-        animationFrameId = requestAnimationFrame(updateDOM);
-    };
-    updateDOM();
+    let runner: any;
+    let engine: any;
+
+    import('matter-js').then((MatterModule) => {
+      const Matter = MatterModule.default || MatterModule;
+      matterRef.current = Matter;
+
+      const Engine = Matter.Engine,
+            Runner = Matter.Runner,
+            MouseConstraint = Matter.MouseConstraint,
+            Mouse = Matter.Mouse,
+            World = Matter.World,
+            Bodies = Matter.Bodies;
+
+      engine = Engine.create();
+      engineRef.current = engine;
+      const world = engine.world;
+
+      engine.world.gravity.y = 0; // Start with no gravity
+
+      const width = sceneRef.current!.clientWidth;
+      const height = sceneRef.current!.clientHeight;
+
+      // Walls
+      const wallOptions = { isStatic: true, render: { visible: false } };
+      const wallThickness = 50;
+      World.add(world, [
+          Bodies.rectangle(width / 2, -wallThickness/2, width, wallThickness, wallOptions), // Top
+          Bodies.rectangle(width / 2, height + wallThickness/2, width, wallThickness, wallOptions), // Bottom
+          Bodies.rectangle(-wallThickness/2, height / 2, wallThickness, height, wallOptions), // Left
+          Bodies.rectangle(width + wallThickness/2, height / 2, wallThickness, height, wallOptions) // Right
+      ]);
+
+      const bodies = skillsList.map((skill, i) => {
+          // Approximate size based on text length and padding
+          const isMobile = window.innerWidth < 768;
+          const charWidth = isMobile ? 8 : 10;
+          const padding = isMobile ? 48 : 64;
+          const w = skill.length * charWidth + padding;
+          const h = isMobile ? 48 : 56;
+          
+          const x = Math.random() * (width - w) + w/2;
+          const y = Math.random() * (height - h) + h/2;
+          
+          return Bodies.rectangle(x, y, w, h, {
+              chamfer: { radius: h / 2 },
+              restitution: 0.8, // Bounciness
+              friction: 0.005,
+              frictionAir: 0.01,
+              render: { visible: false }
+          });
+      });
+      
+      bodiesRef.current = bodies;
+      World.add(world, bodies);
+
+      const mouse = Mouse.create(sceneRef.current);
+      const mouseConstraint = MouseConstraint.create(engine, {
+          mouse: mouse,
+          constraint: {
+              stiffness: 0.2,
+              render: { visible: false }
+          }
+      });
+      World.add(world, mouseConstraint);
+
+      runner = Runner.create();
+      Runner.run(runner, engine);
+
+      const updateDOM = () => {
+          bodies.forEach((body, i) => {
+              const el = document.getElementById(`skill-${i}`);
+              if (el) {
+                  el.style.left = `${body.position.x}px`;
+                  el.style.top = `${body.position.y}px`;
+                  el.style.transform = `translate(-50%, -50%) rotate(${body.angle}rad)`;
+              }
+          });
+          animationFrameId = requestAnimationFrame(updateDOM);
+      };
+      updateDOM();
+    });
 
     return () => {
-        cancelAnimationFrame(animationFrameId);
-        Runner.stop(runner);
-        Engine.clear(engine);
-        if (engine.world) {
-            World.clear(engine.world, false);
+        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        if (matterRef.current && runner && engine) {
+          matterRef.current.Runner.stop(runner);
+          matterRef.current.Engine.clear(engine);
+          if (engine.world) {
+              matterRef.current.World.clear(engine.world, false);
+          }
         }
     };
   }, []);
 
   const handleReset = useCallback(() => {
-    if (!engineRef.current || !sceneRef.current) return;
+    if (!engineRef.current || !sceneRef.current || !matterRef.current) return;
     const width = sceneRef.current.clientWidth;
     const height = sceneRef.current.clientHeight;
 
@@ -519,10 +531,10 @@ function Skills() {
       const x = Math.random() * (width - w) + w/2;
       const y = Math.random() * (height - h) + h/2;
 
-      Matter.Body.setPosition(body, { x, y });
-      Matter.Body.setVelocity(body, { x: 0, y: 0 });
-      Matter.Body.setAngularVelocity(body, 0);
-      Matter.Body.setAngle(body, 0);
+      matterRef.current.Body.setPosition(body, { x, y });
+      matterRef.current.Body.setVelocity(body, { x: 0, y: 0 });
+      matterRef.current.Body.setAngularVelocity(body, 0);
+      matterRef.current.Body.setAngle(body, 0);
     });
 
     setGravity(false);
@@ -699,6 +711,8 @@ function ProjectCard({ project, index }: { project: any, index: number }) {
             style={{ y, scale: imageScale }}
             src={project.image} 
             alt={project.title}
+            loading="lazy"
+            decoding="async"
             className="w-full h-[150%] object-cover absolute top-[-25%] left-0 transition-transform duration-700 group-hover:scale-110"
           />
         </motion.div>
