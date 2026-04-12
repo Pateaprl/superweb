@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence } from 'motion/react';
 import { Github, Twitter, Linkedin, Mail, ArrowRight } from 'lucide-react';
 import webGLFluidEnhanced from 'webgl-fluid';
@@ -181,17 +181,18 @@ function Magnetic({ children, strength = 40 }: { children: React.ReactNode, stre
   const ref = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
 
-  const handleMouse = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleMouse = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!ref.current) return;
     const { clientX, clientY } = e;
-    const { height, width, left, top } = ref.current!.getBoundingClientRect();
+    const { height, width, left, top } = ref.current.getBoundingClientRect();
     const middleX = clientX - (left + width / 2);
     const middleY = clientY - (top + height / 2);
     setPosition({ x: (middleX / width) * strength, y: (middleY / height) * strength });
-  };
+  }, [strength]);
 
-  const reset = () => {
+  const reset = useCallback(() => {
     setPosition({ x: 0, y: 0 });
-  };
+  }, []);
 
   return (
     <motion.div
@@ -207,7 +208,7 @@ function Magnetic({ children, strength = 40 }: { children: React.ReactNode, stre
   );
 }
 
-function Hero() {
+function Hero({ loading }: { loading: boolean }) {
   const { scrollY } = useScroll();
   const y1 = useTransform(scrollY, [0, 1000], [0, 200]);
   const y2 = useTransform(scrollY, [0, 1000], [0, -100]);
@@ -247,47 +248,46 @@ function Hero() {
     >
       <motion.div 
         style={{ y: y1, opacity, transformStyle: "preserve-3d" }} 
+        initial={{ rotateX: 0, rotateY: 0 }}
         animate={{ rotateX, rotateY }}
         transition={{ type: "spring", stiffness: 75, damping: 15, mass: 0.5 }}
         className="text-center z-10 w-full max-w-5xl"
       >
         <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
+          initial={{ opacity: 0, z: 60 }}
+          animate={{ opacity: loading ? 0 : 1, z: 60 }}
           transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          style={{ transform: "translateZ(60px)" }}
           className="inline-block mb-6 px-5 py-2 rounded-full border border-white/10 glass-panel text-xs md:text-sm font-mono tracking-[0.2em] uppercase text-white/80"
         >
           Creative Developer & Designer
         </motion.div>
         
-        <div className="overflow-hidden py-2" style={{ transform: "translateZ(100px)" }}>
+        <motion.div className="overflow-hidden py-2" initial={{ z: 100 }} animate={{ z: 100 }}>
           <motion.h1 
             className="font-display text-[14vw] md:text-[9vw] font-bold leading-[0.85] tracking-tighter"
             initial={{ y: "100%" }}
-            animate={{ y: 0 }}
+            animate={{ y: loading ? "100%" : 0 }}
             transition={{ duration: 1, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
           >
             CRAFTING
           </motion.h1>
-        </div>
-        <div className="overflow-hidden py-2 mb-6" style={{ transform: "translateZ(80px)" }}>
+        </motion.div>
+        <motion.div className="overflow-hidden py-2 mb-6" initial={{ z: 80 }} animate={{ z: 80 }}>
           <motion.h1 
             className="font-display text-[14vw] md:text-[9vw] font-bold leading-[0.85] tracking-tighter"
             initial={{ y: "100%" }}
-            animate={{ y: 0 }}
+            animate={{ y: loading ? "100%" : 0 }}
             transition={{ duration: 1, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
           >
             <span className="text-gradient italic pr-4">DIGITAL</span> IMPRINTING
           </motion.h1>
-        </div>
+        </motion.div>
         
         <motion.p 
           className="max-w-xl mx-auto text-base md:text-xl text-white/60 font-light leading-relaxed"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: 20, z: 40 }}
+          animate={{ opacity: loading ? 0 : 1, y: loading ? 20 : 0, z: 40 }}
           transition={{ duration: 1, delay: 0.8, ease: "easeOut" }}
-          style={{ transform: "translateZ(40px)" }}
         >
           What is presented here is an imagination of movement for me. All the colors are flowing through my life.
         </motion.p>
@@ -297,7 +297,7 @@ function Hero() {
         style={{ y: y2, opacity }}
         className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-4 pointer-events-none"
         initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
+        animate={{ opacity: loading ? 0 : 1 }}
         transition={{ duration: 1, delay: 1.2 }}
       >
         <span className="text-[10px] md:text-xs uppercase tracking-[0.3em] font-mono text-white/40">Scroll to explore</span>
@@ -336,8 +336,10 @@ function Word({ word }: { word: string }) {
 }
 
 function About() {
-  const text = "I believe in the power of design to transform ideas into unforgettable digital experiences. Blending aesthetics with cutting-edge technology to build the web of tomorrow.";
-  const words = text.split(" ");
+  const words = useMemo(() => {
+    const text = "I believe in the power of design to transform ideas into unforgettable digital experiences. Blending aesthetics with cutting-edge technology to build the web of tomorrow.";
+    return text.split(" ");
+  }, []);
   
   return (
     <section className="py-32 px-6 md:px-12 max-w-6xl mx-auto min-h-screen flex items-center justify-center pointer-events-none">
@@ -447,7 +449,7 @@ function Skills() {
     };
   }, []);
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     if (!engineRef.current || !sceneRef.current) return;
     const width = sceneRef.current.clientWidth;
     const height = sceneRef.current.clientHeight;
@@ -471,14 +473,14 @@ function Skills() {
 
     setGravity(false);
     engineRef.current.world.gravity.y = 0;
-  };
+  }, []);
 
-  const toggleGravity = () => {
+  const toggleGravity = useCallback(() => {
     if (!engineRef.current) return;
     const newGravity = !gravity;
     setGravity(newGravity);
     engineRef.current.world.gravity.y = newGravity ? 1 : 0;
-  };
+  }, [gravity]);
 
   return (
     <section className="py-20 px-6 md:px-12 max-w-6xl mx-auto overflow-hidden pointer-events-none">
@@ -572,20 +574,20 @@ function ProjectCard({ project, index }: { project: any, index: number }) {
   const [isPressing, setIsPressing] = useState(false);
   const pressTimer = useRef<number | null>(null);
 
-  const handlePressStart = () => {
+  const handlePressStart = useCallback(() => {
     setIsPressing(true);
     pressTimer.current = window.setTimeout(() => {
       setIsPreviewOpen(true);
       setIsPressing(false);
     }, 500); // 500ms long press
-  };
+  }, []);
 
-  const handlePressEnd = () => {
+  const handlePressEnd = useCallback(() => {
     setIsPressing(false);
     if (pressTimer.current) {
       clearTimeout(pressTimer.current);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (isPreviewOpen) {
@@ -753,6 +755,10 @@ function Footer() {
 export default function App() {
   const [loading, setLoading] = useState(true);
 
+  const handleLoadingComplete = useCallback(() => {
+    setLoading(false);
+  }, []);
+
   useEffect(() => {
     if (loading) {
       document.body.style.overflow = 'hidden';
@@ -764,26 +770,23 @@ export default function App() {
   return (
     <>
       <AnimatePresence mode="wait">
-        {loading && <Preloader onComplete={() => setLoading(false)} />}
+        {loading && <Preloader onComplete={handleLoadingComplete} />}
       </AnimatePresence>
       
       <CustomCursor />
       <AnimatedBackground />
       
-      {!loading && (
-        <motion.main
-          className="pointer-events-none relative z-10"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1 }}
-        >
-          <Hero />
-          <About />
-          <Skills />
-          <Work />
-          <Footer />
-        </motion.main>
-      )}
+      <motion.main
+        className="pointer-events-none relative z-10"
+        initial={{ opacity: 1 }}
+        animate={{ opacity: 1 }}
+      >
+        <Hero loading={loading} />
+        <About />
+        <Skills />
+        <Work />
+        <Footer />
+      </motion.main>
     </>
   );
 }

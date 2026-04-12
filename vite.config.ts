@@ -10,4 +10,16 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  build: {
+    chunkSizeWarningLimit: 1600,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'motion', 'lucide-react'],
+          physics: ['matter-js'],
+          fluid: ['webgl-fluid']
+        }
+      }
+    }
+  }
 })
