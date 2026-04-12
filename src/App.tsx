@@ -1,9 +1,8 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { motion, useScroll, useTransform, AnimatePresence } from 'motion/react';
+import { motion, useScroll, useTransform, AnimatePresence, useMotionValue, useSpring } from 'motion/react';
 import { Github, Twitter, Linkedin, Mail, ArrowRight } from 'lucide-react';
 import webGLFluidEnhanced from 'webgl-fluid';
 import Matter from 'matter-js';
-import { SpeedInsights } from '@vercel/speed-insights/react';
 
 function Preloader({ onComplete }: { onComplete: () => void }) {
   const [progress, setProgress] = useState(0);
@@ -87,12 +86,18 @@ function Preloader({ onComplete }: { onComplete: () => void }) {
 }
 
 function CustomCursor() {
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isHovering, setIsHovering] = useState(false);
+  const cursorX = useMotionValue(-100);
+  const cursorY = useMotionValue(-100);
+  const cursorXSpring = useSpring(cursorX, { stiffness: 500, damping: 28, mass: 0.5 });
+  const cursorYSpring = useSpring(cursorY, { stiffness: 500, damping: 28, mass: 0.5 });
+  const ringXSpring = useSpring(cursorX, { stiffness: 250, damping: 20, mass: 0.8 });
+  const ringYSpring = useSpring(cursorY, { stiffness: 250, damping: 20, mass: 0.8 });
 
   useEffect(() => {
     const updateMousePosition = (e: MouseEvent) => {
-      setMousePosition({ x: e.clientX, y: e.clientY });
+      cursorX.set(e.clientX);
+      cursorY.set(e.clientY);
     };
 
     const handleMouseOver = (e: MouseEvent) => {
@@ -111,27 +116,19 @@ function CustomCursor() {
       window.removeEventListener('mousemove', updateMousePosition);
       window.removeEventListener('mouseover', handleMouseOver);
     };
-  }, []);
+  }, [cursorX, cursorY]);
 
   return (
     <div className="custom-cursor-element hidden [@media(pointer:fine)]:block">
       <motion.div
         className="fixed top-0 left-0 w-4 h-4 bg-white rounded-full pointer-events-none z-50 mix-blend-difference"
-        animate={{
-          x: mousePosition.x - 8,
-          y: mousePosition.y - 8,
-          scale: isHovering ? 2.5 : 1,
-        }}
-        transition={{ type: 'spring', stiffness: 500, damping: 28, mass: 0.5 }}
+        style={{ x: cursorXSpring, y: cursorYSpring, translateX: "-50%", translateY: "-50%" }}
+        animate={{ scale: isHovering ? 2.5 : 1 }}
       />
       <motion.div
         className="fixed top-0 left-0 w-12 h-12 border border-white/30 rounded-full pointer-events-none z-40"
-        animate={{
-          x: mousePosition.x - 24,
-          y: mousePosition.y - 24,
-          scale: isHovering ? 1.5 : 1,
-        }}
-        transition={{ type: 'spring', stiffness: 250, damping: 20, mass: 0.8 }}
+        style={{ x: ringXSpring, y: ringYSpring, translateX: "-50%", translateY: "-50%" }}
+        animate={{ scale: isHovering ? 1.5 : 1 }}
       />
     </div>
   );
@@ -223,7 +220,10 @@ function AnimatedBackground() {
 
 function Magnetic({ children, strength = 40 }: { children: React.ReactNode, strength?: number }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const springX = useSpring(x, { stiffness: 150, damping: 15, mass: 0.1 });
+  const springY = useSpring(y, { stiffness: 150, damping: 15, mass: 0.1 });
 
   const handleMouse = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!ref.current) return;
@@ -231,20 +231,21 @@ function Magnetic({ children, strength = 40 }: { children: React.ReactNode, stre
     const { height, width, left, top } = ref.current.getBoundingClientRect();
     const middleX = clientX - (left + width / 2);
     const middleY = clientY - (top + height / 2);
-    setPosition({ x: (middleX / width) * strength, y: (middleY / height) * strength });
-  }, [strength]);
+    x.set((middleX / width) * strength);
+    y.set((middleY / height) * strength);
+  }, [strength, x, y]);
 
   const reset = useCallback(() => {
-    setPosition({ x: 0, y: 0 });
-  }, []);
+    x.set(0);
+    y.set(0);
+  }, [x, y]);
 
   return (
     <motion.div
       ref={ref}
       onMouseMove={handleMouse}
       onMouseLeave={reset}
-      animate={{ x: position.x, y: position.y }}
-      transition={{ type: "spring", stiffness: 150, damping: 15, mass: 0.1 }}
+      style={{ x: springX, y: springY }}
       className="pointer-events-auto"
     >
       {children}
@@ -258,32 +259,44 @@ function Hero({ loading }: { loading: boolean }) {
   const y2 = useTransform(scrollY, [0, 1000], [0, -100]);
   const opacity = useTransform(scrollY, [0, 500], [1, 0]);
 
-  const [rotateX, setRotateX] = useState(0);
-  const [rotateY, setRotateY] = useState(0);
+  const rotateX = useMotionValue(0);
+  const rotateY = useMotionValue(0);
+  const springRotateX = useSpring(rotateX, { stiffness: 75, damping: 15, mass: 0.5 });
+  const springRotateY = useSpring(rotateY, { stiffness: 75, damping: 15, mass: 0.5 });
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      const { clientX, clientY } = e;
+    const handleMove = (clientX: number, clientY: number) => {
       const { innerWidth, innerHeight } = window;
       const x = (clientX / innerWidth - 0.5) * 40; 
       const y = (clientY / innerHeight - 0.5) * -40;
-      setRotateX(y);
-      setRotateY(x);
+      rotateX.set(y);
+      rotateY.set(x);
     };
 
-    const handleMouseLeave = () => {
-      setRotateX(0);
-      setRotateY(0);
+    const handleMouseMove = (e: MouseEvent) => handleMove(e.clientX, e.clientY);
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        handleMove(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    };
+
+    const handleReset = () => {
+      rotateX.set(0);
+      rotateY.set(0);
     };
 
     window.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseleave', handleMouseLeave);
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
+    document.addEventListener('mouseleave', handleReset);
+    window.addEventListener('touchend', handleReset);
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseleave', handleMouseLeave);
+      window.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('mouseleave', handleReset);
+      window.removeEventListener('touchend', handleReset);
     };
-  }, []);
+  }, [rotateX, rotateY]);
 
   return (
     <section 
@@ -291,10 +304,7 @@ function Hero({ loading }: { loading: boolean }) {
       style={{ perspective: 1000 }}
     >
       <motion.div 
-        style={{ y: y1, opacity, transformStyle: "preserve-3d" }} 
-        initial={{ rotateX: 0, rotateY: 0 }}
-        animate={{ rotateX, rotateY }}
-        transition={{ type: "spring", stiffness: 75, damping: 15, mass: 0.5 }}
+        style={{ y: y1, opacity, transformStyle: "preserve-3d", rotateX: springRotateX, rotateY: springRotateY }} 
         className="text-center z-10 w-full max-w-5xl"
       >
         <motion.div
@@ -536,16 +546,16 @@ function Skills() {
           <p className="text-white/50 text-sm font-mono uppercase tracking-widest">Drag and throw the pills</p>
         </div>
         
-        <div className="flex gap-4 z-20 relative">
+        <div className="flex flex-wrap justify-center gap-3 md:gap-4 z-20 relative px-4">
           <button 
             onClick={handleReset} 
-            className="px-6 py-2 rounded-full border border-white/20 hover:bg-white hover:text-black transition-colors font-mono text-sm uppercase tracking-widest pointer-events-auto cursor-none"
+            className="px-8 py-3 md:py-2 rounded-full border border-white/20 hover:bg-white hover:text-black transition-all active:scale-95 font-mono text-xs md:text-sm uppercase tracking-widest pointer-events-auto cursor-none"
           >
             Reset
           </button>
           <button 
             onClick={toggleGravity} 
-            className={`px-6 py-2 rounded-full border transition-colors font-mono text-sm uppercase tracking-widest pointer-events-auto cursor-none ${gravity ? 'bg-white text-black border-white' : 'border-white/20 hover:bg-white hover:text-black'}`}
+            className={`px-8 py-3 md:py-2 rounded-full border transition-all active:scale-95 font-mono text-xs md:text-sm uppercase tracking-widest pointer-events-auto cursor-none ${gravity ? 'bg-white text-black border-white' : 'border-white/20 hover:bg-white hover:text-black'}`}
           >
             Gravity: {gravity ? 'ON' : 'OFF'}
           </button>
@@ -653,18 +663,19 @@ function ProjectCard({ project, index }: { project: any, index: number }) {
       >
         <motion.div 
           style={{ scale, rotateX, rotateY, filter }}
-          className="w-full md:w-3/5 overflow-hidden rounded-[2rem] glass-panel relative group aspect-[4/3] md:aspect-[16/10] pointer-events-auto shadow-[0_0_50px_rgba(0,0,0,0.5)]"
+          className="w-full md:w-3/5 overflow-hidden rounded-[2rem] glass-panel relative group aspect-[4/3] md:aspect-[16/10] pointer-events-auto shadow-[0_0_50px_rgba(0,0,0,0.5)] cursor-pointer md:cursor-none"
+          onPointerDown={handlePressStart}
+          onPointerUp={handlePressEnd}
+          onPointerLeave={handlePressEnd}
+          onContextMenu={(e) => e.preventDefault()}
         >
+          {/* Desktop Hover View Button */}
           <motion.div 
-            className="absolute inset-0 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 flex items-center justify-center bg-black/40 backdrop-blur-md"
+            className="hidden md:flex absolute inset-0 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 items-center justify-center bg-black/40 backdrop-blur-md pointer-events-none"
           >
             <Magnetic strength={60}>
-              <div className="w-28 h-28 rounded-full bg-white text-black flex items-center justify-center font-bold uppercase tracking-widest text-sm transform scale-0 group-hover:scale-100 transition-transform duration-500 delay-100 cursor-none select-none">
+              <div className="w-28 h-28 rounded-full bg-white text-black flex items-center justify-center font-bold uppercase tracking-widest text-sm transform scale-0 group-hover:scale-100 transition-transform duration-500 delay-100 select-none">
                 <motion.div
-                  onPointerDown={handlePressStart}
-                  onPointerUp={handlePressEnd}
-                  onPointerLeave={handlePressEnd}
-                  onContextMenu={(e) => e.preventDefault()}
                   animate={{ scale: isPressing ? 0.85 : 1 }}
                   className="w-full h-full flex items-center justify-center rounded-full"
                 >
@@ -673,6 +684,17 @@ function ProjectCard({ project, index }: { project: any, index: number }) {
               </div>
             </Magnetic>
           </motion.div>
+
+          {/* Mobile Hold Hint */}
+          <div className="md:hidden absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-xl px-5 py-2.5 rounded-full border border-white/10 text-white/90 text-[10px] font-mono uppercase tracking-widest flex items-center gap-3 z-20 shadow-xl pointer-events-none">
+            <motion.div
+              animate={{ scale: isPressing ? 0.8 : 1.2, opacity: isPressing ? 0.5 : 1 }}
+              transition={{ repeat: isPressing ? 0 : Infinity, repeatType: "reverse", duration: 0.8 }}
+              className="w-2 h-2 rounded-full bg-white"
+            />
+            {isPressing ? "Opening..." : "Hold to preview"}
+          </div>
+
           <motion.img 
             style={{ y, scale: imageScale }}
             src={project.image} 
@@ -770,8 +792,8 @@ function Footer() {
             <span className="text-white/40 italic font-light">US</span>
           </h2>
           <Magnetic strength={40}>
-            <a href="mailto:tatealenvip@gmail.com" className="group relative inline-flex items-center justify-center px-8 py-5 rounded-full bg-white text-black font-medium uppercase tracking-widest overflow-hidden cursor-none">
-              <span className="relative z-10 group-hover:text-white transition-colors duration-500">hello@skyhome.studio</span>
+            <a href="mailto:tatealenvip@gmail.com" className="group relative inline-flex items-center justify-center px-8 py-5 w-full md:w-auto rounded-full bg-white text-black font-medium uppercase tracking-widest overflow-hidden cursor-none active:scale-95 transition-transform">
+              <span className="relative z-10 group-hover:text-white transition-colors duration-500">tatealenvip@gmail.com</span>
               <div className="absolute inset-0 bg-black transform scale-y-0 origin-bottom group-hover:scale-y-100 transition-transform duration-500 ease-[0.76,0,0.24,1]" />
             </a>
           </Magnetic>
@@ -831,7 +853,6 @@ export default function App() {
         <Work />
         <Footer />
       </motion.main>
-      <SpeedInsights />
     </>
   );
 }
