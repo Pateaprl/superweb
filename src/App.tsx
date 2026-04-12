@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence, useMotionValue, useSpring } from 'motion/react';
-import { Github, Twitter, Linkedin, Mail, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Github, Twitter, Linkedin, Mail, ArrowRight } from 'lucide-react';
 
 function Preloader({ onComplete }: { onComplete: () => void }) {
   const [progress, setProgress] = useState(0);
@@ -85,7 +85,6 @@ function Preloader({ onComplete }: { onComplete: () => void }) {
 
 function CustomCursor() {
   const [isHovering, setIsHovering] = useState(false);
-  const [arrowDir, setArrowDir] = useState<'left' | 'right'>('right');
   const cursorX = useMotionValue(-100);
   const cursorY = useMotionValue(-100);
   const cursorXSpring = useSpring(cursorX, { stiffness: 500, damping: 28, mass: 0.5 });
@@ -93,33 +92,29 @@ function CustomCursor() {
   const ringXSpring = useSpring(cursorX, { stiffness: 250, damping: 20, mass: 0.8 });
   const ringYSpring = useSpring(cursorY, { stiffness: 250, damping: 20, mass: 0.8 });
 
-  const isHoveringRef = useRef(false);
-  const currentDirRef = useRef<'left' | 'right'>('right');
-  const lastX = useRef(-100);
+  const prevX = useRef(0);
+  const arrowRotation = useMotionValue(0);
+  const springArrowRotation = useSpring(arrowRotation, { stiffness: 400, damping: 25, mass: 0.5 });
 
   useEffect(() => {
     const updateMousePosition = (e: MouseEvent) => {
       cursorX.set(e.clientX);
       cursorY.set(e.clientY);
-
-      if (e.clientX > lastX.current + 1) {
-        currentDirRef.current = 'right';
-      } else if (e.clientX < lastX.current - 1) {
-        currentDirRef.current = 'left';
+      
+      const deltaX = e.clientX - prevX.current;
+      if (deltaX > 2) {
+        arrowRotation.set(0);
+      } else if (deltaX < -2) {
+        arrowRotation.set(180);
       }
-      lastX.current = e.clientX;
+      prevX.current = e.clientX;
     };
 
     const handleMouseOver = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      const isOverClickable = !!(target.tagName.toLowerCase() === 'a' || target.tagName.toLowerCase() === 'button' || target.closest('a') || target.closest('button'));
-      
-      if (isOverClickable && !isHoveringRef.current) {
-        setArrowDir(currentDirRef.current);
-        isHoveringRef.current = true;
+      if (target.tagName.toLowerCase() === 'a' || target.tagName.toLowerCase() === 'button' || target.closest('a') || target.closest('button')) {
         setIsHovering(true);
-      } else if (!isOverClickable && isHoveringRef.current) {
-        isHoveringRef.current = false;
+      } else {
         setIsHovering(false);
       }
     };
@@ -150,13 +145,15 @@ function CustomCursor() {
         <AnimatePresence>
           {isHovering && (
             <motion.div
-              initial={{ opacity: 0, scale: 0, rotate: arrowDir === 'right' ? -45 : 45 }}
-              animate={{ opacity: 1, scale: 1, rotate: 0 }}
-              exit={{ opacity: 0, scale: 0, rotate: arrowDir === 'right' ? 45 : -45 }}
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0 }}
               transition={{ duration: 0.2 }}
               className="flex items-center justify-center"
             >
-              {arrowDir === 'right' ? <ArrowRight className="w-6 h-6 text-black" /> : <ArrowLeft className="w-6 h-6 text-black" />}
+              <motion.div style={{ rotate: springArrowRotation }} className="flex items-center justify-center">
+                <ArrowRight className="w-6 h-6 text-black" />
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
