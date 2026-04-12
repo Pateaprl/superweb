@@ -278,6 +278,23 @@ function AnimatedBackground() {
   );
 }
 
+function ScrollFade({ children, className = "" }: { children: React.ReactNode, className?: string }) {
+  const ref = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start 95%", "end 5%"]
+  });
+  
+  const opacity = useTransform(scrollYProgress, [0, 0.15, 0.85, 1], [0, 1, 1, 0]);
+  const y = useTransform(scrollYProgress, [0, 0.15, 0.85, 1], [30, 0, 0, -30]);
+
+  return (
+    <motion.div ref={ref} style={{ opacity, y }} className={className}>
+      {children}
+    </motion.div>
+  );
+}
+
 function Magnetic({ children, strength = 40 }: { children: React.ReactNode, strength?: number }) {
   const ref = useRef<HTMLDivElement>(null);
   const x = useMotionValue(0);
@@ -433,17 +450,23 @@ function Word({ word }: { word: string }) {
   });
   
   const opacity = useTransform(scrollYProgress, [0, 1], [0.1, 1]);
-  const y = useTransform(scrollYProgress, [0, 1], [20, 0]);
+  const scrollY = useTransform(scrollYProgress, [0, 1], [20, 0]);
   
   return (
     <span ref={ref} className="relative inline-block mr-[0.25em] mt-[0.1em]">
-      <motion.span 
-        style={{ opacity, y, display: "inline-block" }}
-        whileHover={{ scale: 1.1, y: -10, color: "#fff", textShadow: "0px 0px 20px rgba(255,255,255,0.8)" }}
-        transition={{ type: "spring", stiffness: 300, damping: 10 }}
-        className="cursor-none transition-colors duration-300 pointer-events-auto"
-      >
-        {word}
+      <motion.span style={{ opacity, y: scrollY, display: "inline-block" }}>
+        <motion.span 
+          whileHover={{ 
+            scale: 1.25, 
+            y: -15, 
+            color: "#ffffff", 
+            textShadow: "0 0 20px rgba(255,255,255,0.9), 0 0 40px rgba(255,255,255,0.5)" 
+          }}
+          transition={{ type: "spring", stiffness: 400, damping: 12 }}
+          className="cursor-none pointer-events-auto inline-block transition-colors duration-300"
+        >
+          {word}
+        </motion.span>
       </motion.span>
     </span>
   );
@@ -451,7 +474,7 @@ function Word({ word }: { word: string }) {
 
 function About() {
   const words = useMemo(() => {
-    const text = "I believe in the power of design to transform ideas into unforgettable digital experiences. Blending aesthetics with cutting-edge technology to build the web of tomorrow.";
+    const text = "A cat , carrying a bunch of moonlight , jumped onto the wall .It lowered its head and saw me in the corner . Meow~ , the moonlight fell on my left hand .";
     return text.split(" ");
   }, []);
   
@@ -466,14 +489,28 @@ function About() {
   );
 }
 
-const skillsList = ["React", "WebGL", "Three.js", "Framer Motion", "TailwindCSS", "UI/UX", "TypeScript", "Next.js", "Creative Coding", "GSAP"];
+const skillsData = [
+  { name: "React", color: "#06B6D4" },
+  { name: "WebGL", color: "#FF3366" },
+  { name: "Three.js", color: "#7C3AED" },
+  { name: "Framer Motion", color: "#06B6D4" },
+  { name: "TailwindCSS", color: "#FF3366" },
+  { name: "UI/UX", color: "#7C3AED" },
+  { name: "TypeScript", color: "#06B6D4" },
+  { name: "Next.js", color: "#FF3366" },
+  { name: "Creative Coding", color: "#7C3AED" },
+  { name: "GSAP", color: "#06B6D4" }
+];
 
 function Skills() {
   const sceneRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<any>(null);
   const bodiesRef = useRef<any[]>([]);
   const matterRef = useRef<any>(null);
-  const [gravity, setGravity] = useState(false);
+  const [gravityValue, setGravityValue] = useState(0);
+  const [showSlider, setShowSlider] = useState(false);
+  const pressTimer = useRef<NodeJS.Timeout | null>(null);
+  const sliderRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!sceneRef.current) return;
@@ -512,12 +549,12 @@ function Skills() {
           Bodies.rectangle(width + wallThickness/2, height / 2, wallThickness, height, wallOptions) // Right
       ]);
 
-      const bodies = skillsList.map((skill, i) => {
+      const bodies = skillsData.map((skill, i) => {
           // Approximate size based on text length and padding
           const isMobile = window.innerWidth < 768;
           const charWidth = isMobile ? 8 : 10;
           const padding = isMobile ? 48 : 64;
-          const w = skill.length * charWidth + padding;
+          const w = skill.name.length * charWidth + padding;
           const h = isMobile ? 48 : 56;
           
           const x = Math.random() * (width - w) + w/2;
@@ -580,11 +617,11 @@ function Skills() {
     const height = sceneRef.current.clientHeight;
 
     bodiesRef.current.forEach((body, i) => {
-      const skill = skillsList[i];
+      const skill = skillsData[i];
       const isMobile = window.innerWidth < 768;
       const charWidth = isMobile ? 8 : 10;
       const padding = isMobile ? 48 : 64;
-      const w = skill.length * charWidth + padding;
+      const w = skill.name.length * charWidth + padding;
       const h = isMobile ? 48 : 56;
       
       const x = Math.random() * (width - w) + w/2;
@@ -596,61 +633,204 @@ function Skills() {
       matterRef.current.Body.setAngle(body, 0);
     });
 
-    setGravity(false);
+    setGravityValue(0);
     engineRef.current.world.gravity.y = 0;
   }, []);
 
-  const toggleGravity = useCallback(() => {
-    if (!engineRef.current) return;
-    const newGravity = !gravity;
-    setGravity(newGravity);
-    engineRef.current.world.gravity.y = newGravity ? 1 : 0;
-  }, [gravity]);
+  const handlePointerDown = useCallback(() => {
+    pressTimer.current = setTimeout(() => {
+      setShowSlider(true);
+    }, 400); // 400ms long press
+  }, []);
+
+  const handlePointerUp = useCallback(() => {
+    if (pressTimer.current) {
+      clearTimeout(pressTimer.current);
+      pressTimer.current = null;
+    }
+    // If slider didn't open, it was a click
+    if (!showSlider) {
+      if (!engineRef.current) return;
+      const newGravity = gravityValue === 0 ? 1 : 0;
+      setGravityValue(newGravity);
+      engineRef.current.world.gravity.y = newGravity;
+    }
+  }, [gravityValue, showSlider]);
+
+  const handlePointerLeave = useCallback(() => {
+    if (pressTimer.current) {
+      clearTimeout(pressTimer.current);
+      pressTimer.current = null;
+    }
+  }, []);
+
+  const handleSliderChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseFloat(e.target.value);
+    setGravityValue(val);
+    if (engineRef.current) {
+      engineRef.current.world.gravity.y = val;
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (sliderRef.current && !sliderRef.current.contains(e.target as Node)) {
+        setShowSlider(false);
+      }
+    };
+    if (showSlider) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showSlider]);
 
   return (
     <section className="py-20 px-6 md:px-12 max-w-6xl mx-auto overflow-hidden pointer-events-none">
       <div className="mb-16 flex flex-col items-center gap-8">
-        <div className="flex flex-col items-center gap-4">
+        <ScrollFade className="flex flex-col items-center gap-4">
           <h2 className="font-display text-4xl md:text-5xl font-bold tracking-tighter text-center">
-            INTERACTIVE <span className="text-white/40 italic font-light">PLAYGROUND</span>
+            KINETIC <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500 italic font-light pr-2">DATA_NODES</span>
           </h2>
-          <p className="text-white/50 text-sm font-mono uppercase tracking-widest">Drag and throw the pills</p>
-        </div>
+          <p className="text-cyan-500/50 text-sm font-mono uppercase tracking-widest flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
+            Simulation Environment Active
+          </p>
+        </ScrollFade>
         
-        <div className="flex flex-wrap justify-center gap-3 md:gap-4 z-20 relative px-4">
+        <ScrollFade className="flex flex-wrap justify-center gap-3 md:gap-4 z-20 relative px-4">
           <button 
             onClick={handleReset} 
-            className="px-8 py-3 md:py-2 rounded-full border border-white/20 hover:bg-white hover:text-black transition-all active:scale-95 font-mono text-xs md:text-sm uppercase tracking-widest pointer-events-auto cursor-none"
+            className="px-8 py-3 md:py-2 rounded-full border border-white/20 hover:border-cyan-400 hover:text-cyan-400 hover:bg-cyan-400/10 hover:shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all active:scale-95 font-mono text-xs md:text-sm uppercase tracking-widest pointer-events-auto cursor-none"
           >
-            Reset
+            Reset.Sim()
           </button>
-          <button 
-            onClick={toggleGravity} 
-            className={`px-8 py-3 md:py-2 rounded-full border transition-all active:scale-95 font-mono text-xs md:text-sm uppercase tracking-widest pointer-events-auto cursor-none ${gravity ? 'bg-white text-black border-white' : 'border-white/20 hover:bg-white hover:text-black'}`}
-          >
-            Gravity: {gravity ? 'ON' : 'OFF'}
-          </button>
-        </div>
+          <div className="relative flex flex-col items-center" ref={sliderRef}>
+            <button 
+              onPointerDown={handlePointerDown}
+              onPointerUp={handlePointerUp}
+              onPointerLeave={handlePointerLeave}
+              className={`px-8 py-3 md:py-2 rounded-full border transition-all active:scale-95 font-mono text-xs md:text-sm uppercase tracking-widest pointer-events-auto cursor-none select-none ${gravityValue !== 0 ? 'bg-cyan-500/20 text-cyan-400 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]' : 'border-white/20 hover:border-cyan-400 hover:text-cyan-400 hover:bg-cyan-400/10 hover:shadow-[0_0_15px_rgba(6,182,212,0.3)]'}`}
+            >
+              Gravity: {gravityValue.toFixed(1)}G
+            </button>
+            <AnimatePresence>
+              {showSlider && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10, scale: 0.9, filter: "blur(10px)" }}
+                  animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+                  exit={{ opacity: 0, y: 10, scale: 0.9, filter: "blur(10px)" }}
+                  className="absolute top-full mt-6 p-[1px] bg-gradient-to-b from-cyan-500/50 to-purple-500/50 pointer-events-auto z-50 w-64 shadow-[0_0_30px_rgba(6,182,212,0.2)]"
+                  style={{
+                    clipPath: "polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px)",
+                  }}
+                >
+                  <div 
+                    className="bg-[#050505]/95 backdrop-blur-xl p-5 w-full h-full"
+                    style={{ clipPath: "polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px)" }}
+                  >
+                    {/* Header */}
+                    <div className="flex justify-between items-center mb-4">
+                      <div className="text-[10px] font-mono text-cyan-500/70 uppercase tracking-widest flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-pulse" />
+                        GRAV_CALIBRATION
+                      </div>
+                      <div className="text-[10px] font-mono text-white/30">SYS.OP</div>
+                    </div>
+
+                    {/* Dynamic Display */}
+                    <div className="flex flex-col items-center justify-center py-4 mb-5 bg-cyan-950/20 border-y border-cyan-500/20 relative overflow-hidden">
+                      <div className="absolute inset-0 bg-[linear-gradient(to_right,#06b6d410_1px,transparent_1px),linear-gradient(to_bottom,#06b6d410_1px,transparent_1px)] bg-[size:8px_8px]" />
+                      <div className={`text-4xl font-display font-bold tracking-tighter z-10 transition-colors duration-300 ${gravityValue < 0 ? 'text-purple-400 drop-shadow-[0_0_15px_rgba(168,85,247,0.8)]' : gravityValue > 0 ? 'text-cyan-400 drop-shadow-[0_0_15px_rgba(6,182,212,0.8)]' : 'text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.8)]'}`}>
+                        {gravityValue > 0 ? '+' : ''}{gravityValue.toFixed(1)}<span className="text-lg text-white/40 ml-1">G</span>
+                      </div>
+                      <div className="text-[8px] font-mono text-white/50 mt-2 z-10 tracking-widest uppercase">
+                        {gravityValue < 0 ? 'Anti-Gravity Field' : gravityValue === 0 ? 'Zero-G Environment' : 'Standard Gravity'}
+                      </div>
+                    </div>
+
+                    {/* Custom Slider */}
+                    <div className="relative w-full py-2">
+                      {/* Center Mark */}
+                      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-0.5 h-6 bg-white/30 z-0" />
+                      <input 
+                        type="range" 
+                        min="-10" 
+                        max="10" 
+                        step="0.1" 
+                        value={gravityValue}
+                        onChange={handleSliderChange}
+                        className={`w-full h-1 bg-gradient-to-r from-purple-500/50 via-white/20 to-cyan-500/50 appearance-none outline-none cursor-none relative z-10
+                          [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:[clip-path:polygon(0_20%,50%_0,100%_20%,100%_80%,50%_100%,0_80%)] [&::-webkit-slider-thumb]:transition-colors [&::-webkit-slider-thumb]:duration-300
+                          [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-6 [&::-moz-range-thumb]:[clip-path:polygon(0_20%,50%_0,100%_20%,100%_80%,50%_100%,0_80%)] [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:transition-colors [&::-moz-range-thumb]:duration-300
+                          ${gravityValue < 0 
+                            ? '[&::-webkit-slider-thumb]:bg-purple-400 [&::-webkit-slider-thumb]:shadow-[0_0_15px_rgba(168,85,247,0.8)] [&::-moz-range-thumb]:bg-purple-400 [&::-moz-range-thumb]:shadow-[0_0_15px_rgba(168,85,247,0.8)]' 
+                            : gravityValue > 0 
+                              ? '[&::-webkit-slider-thumb]:bg-cyan-400 [&::-webkit-slider-thumb]:shadow-[0_0_15px_rgba(6,182,212,0.8)] [&::-moz-range-thumb]:bg-cyan-400 [&::-moz-range-thumb]:shadow-[0_0_15px_rgba(6,182,212,0.8)]'
+                              : '[&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-[0_0_15px_rgba(255,255,255,0.8)] [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:shadow-[0_0_15px_rgba(255,255,255,0.8)]'
+                          }
+                        `}
+                      />
+                    </div>
+
+                    {/* Footer Labels */}
+                    <div className="flex justify-between w-full text-[9px] font-mono text-white/40 mt-3">
+                      <span className="text-purple-400/70">-10.0</span>
+                      <span>0.0</span>
+                      <span className="text-cyan-400/70">+10.0</span>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </ScrollFade>
       </div>
       
-      <div 
-        ref={sceneRef} 
-        className="relative w-full h-[500px] md:h-[600px] border border-white/10 rounded-[3rem] glass-panel overflow-hidden bg-white/[0.02] pointer-events-auto"
-        style={{ touchAction: 'none' }}
-      >
-        {skillsList.map((skill, i) => (
+      <div className="relative w-full">
+        {/* Decorative glowing blobs behind the glass for frosted effect */}
+        <div className="absolute top-1/2 left-1/4 w-72 md:w-96 h-72 md:h-96 bg-cyan-500/20 rounded-full mix-blend-screen filter blur-[80px] md:blur-[120px] -translate-y-1/2 -translate-x-1/2 pointer-events-none" />
+        <div className="absolute top-1/2 right-1/4 w-72 md:w-96 h-72 md:h-96 bg-purple-500/20 rounded-full mix-blend-screen filter blur-[80px] md:blur-[120px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+        
+        <div 
+          ref={sceneRef} 
+          className="relative w-full h-[500px] md:h-[600px] border border-white/10 rounded-[2rem] overflow-hidden bg-white/[0.02] backdrop-blur-3xl pointer-events-auto shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
+          style={{ touchAction: 'none' }}
+        >
+          {/* Sci-fi Grid Background */}
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:32px_32px]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,#000000_80%)] opacity-60" />
+
+        {/* HUD Elements */}
+        <div className="absolute top-6 left-6 w-8 h-8 border-t-2 border-l-2 border-cyan-500/30 rounded-tl-lg pointer-events-none" />
+        <div className="absolute top-6 right-6 w-8 h-8 border-t-2 border-r-2 border-cyan-500/30 rounded-tr-lg pointer-events-none" />
+        <div className="absolute bottom-6 left-6 w-8 h-8 border-b-2 border-l-2 border-cyan-500/30 rounded-bl-lg pointer-events-none" />
+        <div className="absolute bottom-6 right-6 w-8 h-8 border-b-2 border-r-2 border-cyan-500/30 rounded-br-lg pointer-events-none" />
+
+        <div className="absolute top-8 left-16 text-[10px] font-mono text-cyan-500/40 tracking-widest pointer-events-none hidden md:block">SYS.CORE // ONLINE</div>
+        <div className="absolute bottom-8 right-16 text-[10px] font-mono text-cyan-500/40 tracking-widest pointer-events-none hidden md:block">PHYSICS.ENGINE // MATTER.JS</div>
+
+        {skillsData.map((skill, i) => (
           <div
             key={i}
             id={`skill-${i}`}
-            className="absolute top-0 left-0 px-6 py-3 md:px-8 md:py-4 bg-white/5 border border-white/10 rounded-full backdrop-blur-md font-mono text-sm md:text-base uppercase tracking-wider text-white/80 select-none pointer-events-none shadow-lg whitespace-nowrap"
-            style={{ transform: 'translate(-50%, -50%)' }}
+            className="absolute top-0 left-0 px-6 py-3 md:px-8 md:py-4 bg-black/80 border rounded-full backdrop-blur-md font-mono text-sm md:text-base uppercase tracking-wider select-none pointer-events-none whitespace-nowrap shadow-lg transition-colors duration-300"
+            style={{ 
+              transform: 'translate(-50%, -50%)',
+              borderColor: `${skill.color}50`,
+              color: skill.color,
+              boxShadow: `0 0 20px ${skill.color}20, inset 0 0 10px ${skill.color}10`,
+              textShadow: `0 0 10px ${skill.color}80`
+            }}
           >
-            {skill}
+            {skill.name}
           </div>
         ))}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03] font-display text-[10vw] font-bold uppercase tracking-tighter text-center leading-none">
-          SKILLS
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.02] font-display text-[12vw] font-bold uppercase tracking-tighter text-center leading-none text-cyan-500">
+          SYSTEM
         </div>
+      </div>
       </div>
     </section>
   );
@@ -777,25 +957,33 @@ function ProjectCard({ project, index }: { project: any, index: number }) {
         </motion.div>
         
         <div className="w-full md:w-2/5 flex flex-col">
-          <div className="flex items-center gap-4 mb-6">
-            <span className="text-sm font-mono tracking-widest uppercase" style={{ color: project.color }}>
-              0{index + 1}
-            </span>
-            <div className="h-[1px] w-12 bg-white/20" />
-            <span className="text-sm font-mono tracking-widest uppercase text-white/60">
-              {project.year}
-            </span>
-          </div>
-          <h3 className="font-display text-5xl md:text-7xl font-bold mb-6 tracking-tight">{project.title}</h3>
-          <p className="text-white/50 text-lg md:text-xl mb-10 leading-relaxed font-light">
-            {project.category}
-          </p>
-          <Magnetic strength={20}>
-            <button className="w-fit flex items-center gap-4 pb-3 border-b border-white/20 hover:border-white transition-colors group cursor-none">
-              <span className="uppercase tracking-[0.2em] text-sm font-medium">Explore Case</span>
-              <ArrowRight className="w-5 h-5 transform group-hover:translate-x-3 transition-transform" />
-            </button>
-          </Magnetic>
+          <ScrollFade>
+            <div className="flex items-center gap-4 mb-6">
+              <span className="text-sm font-mono tracking-widest uppercase" style={{ color: project.color }}>
+                0{index + 1}
+              </span>
+              <div className="h-[1px] w-12 bg-white/20" />
+              <span className="text-sm font-mono tracking-widest uppercase text-white/60">
+                {project.year}
+              </span>
+            </div>
+          </ScrollFade>
+          <ScrollFade>
+            <h3 className="font-display text-5xl md:text-7xl font-bold mb-6 tracking-tight">{project.title}</h3>
+          </ScrollFade>
+          <ScrollFade>
+            <p className="text-white/50 text-lg md:text-xl mb-10 leading-relaxed font-light">
+              {project.category}
+            </p>
+          </ScrollFade>
+          <ScrollFade>
+            <Magnetic strength={20}>
+              <button className="w-fit flex items-center gap-4 pb-3 border-b border-white/20 hover:border-white transition-colors group cursor-none pointer-events-auto">
+                <span className="uppercase tracking-[0.2em] text-sm font-medium">Explore Case</span>
+                <ArrowRight className="w-5 h-5 transform group-hover:translate-x-3 transition-transform" />
+              </button>
+            </Magnetic>
+          </ScrollFade>
         </div>
       </motion.div>
 
@@ -836,13 +1024,17 @@ function Work() {
   return (
     <section className="py-32 px-6 md:px-12 max-w-7xl mx-auto">
       <div className="mb-32 flex flex-col md:flex-row md:items-end justify-between gap-8">
-        <h2 className="font-display text-6xl md:text-8xl font-bold tracking-tighter">
-          SELECTED <br/>
-          <span className="text-white/40 italic font-light">WORKS</span>
-        </h2>
-        <p className="text-white/60 max-w-sm text-lg">
-          A curated selection of my recent projects, showcasing a blend of creative design and technical excellence.
-        </p>
+        <ScrollFade>
+          <h2 className="font-display text-6xl md:text-8xl font-bold tracking-tighter">
+            SELECTED <br/>
+            <span className="text-white/40 italic font-light">WORKS</span>
+          </h2>
+        </ScrollFade>
+        <ScrollFade>
+          <p className="text-white/60 max-w-sm text-lg">
+            A curated selection of my recent projects, showcasing a blend of creative design and technical excellence.
+          </p>
+        </ScrollFade>
       </div>
 
       <div className="flex flex-col gap-40">
@@ -859,34 +1051,34 @@ function Footer() {
     <footer className="relative pt-32 pb-12 px-6 md:px-12 overflow-hidden mt-32">
       <div className="absolute inset-0 z-[-1] bg-gradient-to-b from-transparent to-white/[0.02]" />
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center md:items-end gap-16 mb-32">
-        <div className="flex flex-col items-center md:items-start w-full md:w-auto">
+        <ScrollFade className="flex flex-col items-center md:items-start w-full md:w-auto">
           <h2 className="font-display text-6xl md:text-[9vw] leading-[0.85] font-bold tracking-tighter mb-8 text-center md:text-left">
             JOIN <br/>
             <span className="text-white/40 italic font-light">US</span>
           </h2>
           <Magnetic strength={40}>
-            <a href="mailto:tatealenvip@gmail.com" className="group relative inline-flex items-center justify-center px-8 py-5 w-full md:w-auto rounded-full bg-white text-black font-medium uppercase tracking-widest overflow-hidden cursor-none active:scale-95 transition-transform">
+            <a href="mailto:tatealenvip@gmail.com" className="group relative inline-flex items-center justify-center px-8 py-5 w-full md:w-auto rounded-full bg-white text-black font-medium uppercase tracking-widest overflow-hidden cursor-none active:scale-95 transition-transform pointer-events-auto">
               <span className="relative z-10 group-hover:text-white transition-colors duration-500">tatealenvip@gmail.com</span>
               <div className="absolute inset-0 bg-black transform scale-y-0 origin-bottom group-hover:scale-y-100 transition-transform duration-500 ease-[0.76,0,0.24,1]" />
             </a>
           </Magnetic>
-        </div>
+        </ScrollFade>
         
-        <div className="flex gap-4">
+        <ScrollFade className="flex gap-4">
           {[Github, Twitter, Linkedin, Mail].map((Icon, i) => (
             <Magnetic key={i} strength={30}>
-              <a href="#" className="w-16 h-16 rounded-full border border-white/20 flex items-center justify-center hover:bg-white hover:text-black transition-colors duration-500 cursor-none group">
+              <a href="#" className="w-16 h-16 rounded-full border border-white/20 flex items-center justify-center hover:bg-white hover:text-black transition-colors duration-500 cursor-none group pointer-events-auto">
                 <Icon className="w-6 h-6 transform group-hover:scale-110 transition-transform duration-500" />
               </a>
             </Magnetic>
           ))}
-        </div>
+        </ScrollFade>
       </div>
       
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center text-white/30 text-xs md:text-sm font-mono uppercase tracking-[0.2em] gap-4">
+      <ScrollFade className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center text-white/30 text-xs md:text-sm font-mono uppercase tracking-[0.2em] gap-4">
         <p>© {new Date().getFullYear()} Tate Alen</p>
         <p>Designed & Built with passion</p>
-      </div>
+      </ScrollFade>
     </footer>
   );
 }
