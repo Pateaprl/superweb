@@ -6,16 +6,30 @@ import Matter from 'matter-js';
 
 function Preloader({ onComplete }: { onComplete: () => void }) {
   const [progress, setProgress] = useState(0);
+  const [loadingText, setLoadingText] = useState("Initializing environment...");
 
   useEffect(() => {
+    const texts = [
+      "Initializing environment...",
+      "Loading WebGL contexts...",
+      "Rendering physics engine...",
+      "Preparing immersive experience..."
+    ];
+
     const timer = setInterval(() => {
       setProgress(p => {
-        if (p >= 100) {
+        const newP = p + Math.floor(Math.random() * 12) + 2;
+        if (newP >= 100) {
           clearInterval(timer);
-          setTimeout(onComplete, 500);
+          setLoadingText("System ready.");
+          setTimeout(onComplete, 800);
           return 100;
         }
-        return p + Math.floor(Math.random() * 15) + 5;
+        if (newP > 25 && newP < 50) setLoadingText(texts[1]);
+        else if (newP >= 50 && newP < 75) setLoadingText(texts[2]);
+        else if (newP >= 75) setLoadingText(texts[3]);
+
+        return newP;
       });
     }, 100);
     return () => clearInterval(timer);
@@ -23,20 +37,49 @@ function Preloader({ onComplete }: { onComplete: () => void }) {
 
   return (
     <motion.div 
-      className="fixed inset-0 z-[100] bg-[#030303] flex flex-col items-center justify-center"
+      className="fixed inset-0 z-[100] bg-[#030303] flex flex-col justify-between p-6 md:p-12 overflow-hidden"
       initial={{ y: 0 }}
       exit={{ y: "-100%", transition: { duration: 0.8, ease: [0.76, 0, 0.24, 1] } }}
     >
-      <div className="font-display text-6xl md:text-8xl font-bold text-white mb-8">
-        {Math.min(progress, 100)}%
+      {/* Top Bar */}
+      <div className="flex justify-between items-start text-white/40 font-mono text-[10px] md:text-xs uppercase tracking-widest">
+        <span>Tate Alen © {new Date().getFullYear()}</span>
+        <span>Portfolio / WebGL</span>
       </div>
-      <div className="w-64 h-1 bg-white/20 rounded-full overflow-hidden">
-        <motion.div 
-          className="h-full bg-white"
-          initial={{ width: 0 }}
-          animate={{ width: `${Math.min(progress, 100)}%` }}
-          transition={{ ease: "linear" }}
-        />
+
+      {/* Center Content */}
+      <div className="flex flex-col items-center justify-center flex-1 w-full">
+        <div className="overflow-hidden mb-6">
+          <motion.div
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            className="font-display text-[25vw] md:text-[15vw] font-bold text-white leading-none tracking-tighter"
+          >
+            {Math.min(progress, 100)}<span className="text-[12vw] md:text-[8vw] text-white/30 ml-2">%</span>
+          </motion.div>
+        </div>
+        
+        <div className="w-full max-w-md flex flex-col gap-4 px-4">
+          <div className="h-[2px] w-full bg-white/10 relative overflow-hidden rounded-full">
+            <motion.div
+              className="absolute top-0 left-0 h-full bg-white shadow-[0_0_15px_rgba(255,255,255,0.8)]"
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.min(progress, 100)}%` }}
+              transition={{ ease: "circOut", duration: 0.2 }}
+            />
+          </div>
+          <div className="flex justify-between items-center text-white/40 font-mono text-[10px] uppercase tracking-[0.2em]">
+            <span className="animate-pulse">{loadingText}</span>
+            <span>{Math.min(progress, 100) === 100 ? 'READY' : 'LOADING'}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Bar */}
+      <div className="flex justify-between items-end text-white/40 font-mono text-[10px] md:text-xs uppercase tracking-widest">
+        <span>System Initialization</span>
+        <span className="text-right">Interactive<br/>Experience</span>
       </div>
     </motion.div>
   );
