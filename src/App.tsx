@@ -474,7 +474,7 @@ function Word({ word }: { word: string }) {
 
 function About() {
   const words = useMemo(() => {
-    const text = "A cat , carrying a bunch of moonlight , jumped onto the wall . He lowered his head and saw me in the corner . Meow ~ , the moonlight fell on my hand .";
+    const text = "A cat , carrying a sliver of moonlight in its mouth , leaps onto the wall . Peering down at me in the corner , it lets out a soft ' Meow~ ' , and the moonlight spills onto my hand . ";
     return text.split(" ");
   }, []);
   
